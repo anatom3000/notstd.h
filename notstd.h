@@ -57,7 +57,7 @@
 // type annotations
 #define move
 #define mut
-#define Nullable(T) T*
+#define Nullable(T) T
 
 // notstd config
 
