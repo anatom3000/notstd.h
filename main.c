@@ -76,5 +76,7 @@ int queue() {
 }
 
 int main() {
-    return vec();
+    vec();
+    list();
+    queue();
 }
