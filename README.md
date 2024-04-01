@@ -5,3 +5,4 @@ Just put `notstd.h` in your project and include it.
 
 See documentation at the top of the file, see `example.c` for usage.
 
+Licensed under MIT, see LICENSE file.
