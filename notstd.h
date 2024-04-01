@@ -52,7 +52,7 @@
 #define STRINGIFY(x) __STRINGIFY_IMPL(x)
 
 #define println(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-#define dbg(fmt, ...) printf("[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define dbg(fmt, ...) printf("[%s:%d:function %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
 
 // type annotations
 #define move
@@ -99,26 +99,27 @@ typedef_Vec(char, String);
 // LIST
 
 #define typedef_List(T, name)\
-    typedef struct CONCAT(_nonptr_, name) {\
-        T head;\
-        struct CONCAT(_nonptr_, name)* tail;\
-    } CONCAT(_nonptr_, name);\
-    typedef struct CONCAT(_nonptr_, name)* name;\
-    \
-    name CONCAT(name, _Cons)(T head, name tail) {\
-        name new = malloc(sizeof(name));\
-        *new = (struct CONCAT(_nonptr_, name)) { .head = head, .tail = tail };\
-        return new;\
+typedef struct CONCAT(_nonptr_, name) {\
+    T head;\
+    struct CONCAT(_nonptr_, name)* tail;\
+} CONCAT(_nonptr_, name);\
+typedef struct CONCAT(_nonptr_, name)* name;
+
+#define List_Cons(head_, tail_) ({\
+    typeof(tail_) new = malloc(sizeof(*(tail_)));\
+    *new = (typeof(*(tail_))){ .head = head_, .tail = tail_ };\
+    new;\
+})
+    
+#define List_free(self)\ ({\
+    typeof(self) current = (self);\
+    while (current != NULL) {\
+        name next = current->tail;\
+        current->tail = NULL;\
+        free(current);\
+        current = next;\
     }\
-    \
-    void CONCAT(name, _free)(name self) {\
-        while (self != NULL) {\
-            name next = self->tail;\
-            self->tail = NULL;\
-            free(self);\
-            self = next;\
-        }\
-    }\
+})
 
 #define List_match(lst, nil_case, h, t, cons_case)\
     do {\
@@ -129,7 +130,7 @@ typedef_Vec(char, String);
             typeof((lst)->head) h = (lst)->head;\
             cons_case\
         }\
-    } while (0);
+    } while (0)
 
 
 // QUEUE
@@ -146,38 +147,45 @@ typedef_Vec(char, String);
         size_t head;\
         size_t len;\
         size_t cap;\
-    } name;\
-    \
-    void CONCAT(name, _push)(name* self, T x) {\
-        if (self->len == self->cap) {\
-            size_t new_cap = self->cap == 0 ? NOTSTD_MIN_CONTAINER_SIZE : self->cap * 2;\
-            T* new_items = (T*)malloc(sizeof(T)*new_cap);\
-    \
-            for (size_t i = 0; i < self->len; i++) {\
-                size_t j = (i+self->head) % self->cap;\
-                new_items[i] = self->items[j];\
-            }\
-    \
-            free(self->items);\
-    \
-            self->items = new_items;\
-            self->head = 0;\
-            self->cap = new_cap;\
+    } name;
+
+#define Queue_push(self_, x_) ({\
+    typeof(self_) self = self_;\
+    typeof(x_) x = x_;\
+    if (self->len == self->cap) {\
+        size_t new_cap = self->cap == 0 ? NOTSTD_MIN_CONTAINER_SIZE : self->cap * 2;\
+        typeof(self->items) new_items = (typeof(self->items))malloc(sizeof(*self->items)*new_cap);\
+        \
+        for (size_t i = 0; i < self->len; i++) {\
+            size_t j = (i+self->head) % self->cap;\
+            new_items[i] = self->items[j];\
         }\
-    \
-        size_t end = (self->len + self->head) % self->cap;\
-        self->items[end] = x;\
-        self->len++;\
+        \
+        free(self->items);\
+        \
+        self->items = new_items;\
+        self->head = 0;\
+        self->cap = new_cap;\
     }\
     \
-    T* CONCAT(name, _pop)(name* self) {\
-        if (self->len == 0) return NULL;\
-    \
-        T *x = &self->items[self->head];\
+    size_t end = (self->len + self->head) % self->cap;\
+    self->items[end] = x;\
+    self->len++;\
+    unit;\
+})
+
+
+#define Queue_pop(self_) ({\
+    typeof(self_) self = self_;\
+    typeof(self->items) x;\
+    if (self->len == 0) {\
+        x = NULL;\
+    } else {\
+        x = &self->items[self->head];\
         self->head++;\
         self->len--;\
-    \
-        return x;\
-    }
+    }\
+    x;\
+})
 
 #endif // _NOTSTD_H_INCLUDED

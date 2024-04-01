@@ -12,9 +12,9 @@ IntList IntList_rev(move IntList self, IntList acc) {
         },
         h, t, {
             free(self);
-            return IntList_rev(t, IntList_Cons(h, acc));
+            return IntList_rev(t, List_Cons(h, acc));
         }
-    )
+    );
 }
 
 void IntList_print(IntList self) {
@@ -24,14 +24,14 @@ void IntList_print(IntList self) {
             println("%d", h);
             IntList_print(t);
         }
-    )
+    );
 }
 
 int list() {
     IntList lst = NULL;
-    lst = IntList_Cons(1, lst);
-    lst = IntList_Cons(2, lst);
-    lst = IntList_Cons(3, lst);
+    lst = List_Cons(1, lst);
+    lst = List_Cons(2, lst);
+    lst = List_Cons(3, lst);
     
     IntList_print(lst);
     IntList reversed = IntList_rev(lst, NULL);
@@ -60,11 +60,11 @@ int queue() {
     IntQueue q = {0};
 
     for (int i = 0; i < 10; i++) {
-        IntQueue_push(&q, i);
+        Queue_push(&q, i);
     }
     
     while (true) {
-        int* x = IntQueue_pop(&q);
+        int* x = Queue_pop(&q);
         if (x == NULL) break;
 
         dbg("%d", *x);
