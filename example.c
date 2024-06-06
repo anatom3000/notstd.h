@@ -75,8 +75,9 @@ int queue() {
     return 0;
 }
 
+int hashmap() {
+    return 0;
+}
+
 int main() {
-    vec();
-    list();
-    queue();
 }

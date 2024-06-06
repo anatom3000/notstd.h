@@ -1,38 +1,38 @@
 /*
- * API:
- *  macro CONCAT(x, y);
- *  macro STRINGIFY(x);
- *  macro `move`;
- *  macro `mut`;
- *  
- *  int println(char* format, ...);
- *  int dbg    (char* format, ...);
- *
- *  type unit_t;
- *  unit_t unit;
- *
- *  typedef_Vec(type T, Ident name);
- *  void Vec_append(Vec(T) *self, T x);
- *
- *  typedef_Stack(type T, Ident name);
- *  void Stack_push(Stack(T) *self, T x);
- *  T    Stack_pop (Stack(T) *self);
- *
- *  type String;
- *
- *  typedef_List(type T, Ident name);
- *  List(T) List(T)_Cons(T head, List(T) tail);
- *  void    List(T)_free(List(T) self);
- *  void    List_match(
- *      List(T) to_match, 
- *      Block nil_case,
- *      Ident head, Ident tail, Block cons_case
- *  );
- *
- *  typedef_Queue(type T, Ident name);
- *  void         Queue(T)_push(Queue(T) *self, T x);
- *  Nullable(T*) Queue(T)_pop (Queue(T) *self);
- */
+   * API:
+   *  macro CONCAT(x, y);
+   *  macro STRINGIFY(x);
+   *  macro `move`;
+   *  macro `mut`;
+   *  
+   *  int println(char* format, ...);
+   *  int dbg    (char* format, ...);
+   *
+   *  type unit_t;
+   *  unit_t unit;
+   *
+   *  typedef_Vec(type T, Ident name);
+   *  void Vec_append(Vec(T) *self, T x);
+   *
+   *  typedef_Stack(type T, Ident name);
+   *  void Stack_push(Stack(T) *self, T x);
+   *  T    Stack_pop (Stack(T) *self);
+   *
+   *  type String;
+   *
+   *  typedef_List(type T, Ident name);
+   *  List(T) List(T)_Cons(T head, List(T) tail);
+   *  void    List(T)_free(List(T) self);
+   *  void    List_match(
+   *      List(T) to_match, 
+   *      Block nil_case,
+   *      Ident head, Ident tail, Block cons_case
+   *  );
+   *
+   *  typedef_Queue(type T, Ident name);
+   *  void         Queue(T)_push(Queue(T) *self, T x);
+   *  Nullable(T*) Queue(T)_pop (Queue(T) *self);
+*/
 #ifndef _NOTSTD_H_INCLUDED
 #define _NOTSTD_H_INCLUDED
 
@@ -52,7 +52,14 @@
 #define STRINGIFY(x) __STRINGIFY_IMPL(x)
 
 #define println(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
-#define dbg(fmt, ...) printf("[%s:%d:function %s] " fmt "\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#define dbg(fmt, ...) printf("[%s:%d] %s = " fmt "\n", __FILE__, __LINE__, STRINGIFY(__VA_ARGS__), ##__VA_ARGS__)
+
+#define swap(x, y)\
+    do {\
+        typeof(x) _swap_tmp_ = x;\
+        x = y;\
+        y = _swap_tmp_;\
+    } while (0)
 
 // type annotations
 #define move
@@ -70,31 +77,64 @@
 /// UNIT
 
 typedef struct {} unit_t;
-#define unit (unit_t){};
+#define unit (unit_t){}
 
 /// VEC
 
 #define typedef_Vec(T, name) typedef struct { T* items; size_t len; size_t cap; } name
 
-#define Vec_append(/* Vec(T) */ self, /* T */ x)\
-    do {\
-        if ((self)->len == (self)->cap) {\
-            (self)->cap = (self)->cap == 0 ? NOTSTD_MIN_CONTAINER_SIZE : (self)->cap * 2;\
-            (self)->items = realloc((self)->items, sizeof((self)->items[0])*(self)->cap);\
-        }\
-        (self)->items[(self)->len++] = x;\
-    } while (0)
+#define Vec_append(/* Vec(T) */ self, /* T */ x) ({\
+    if ((self)->len == (self)->cap) {\
+        (self)->cap = (self)->cap == 0 ? NOTSTD_MIN_CONTAINER_SIZE : (self)->cap * 2;\
+        (self)->items = realloc((self)->items, sizeof((self)->items[0])*(self)->cap);\
+    }\
+    (self)->items[(self)->len++] = x;\
+})
+
+#define Vec_print(self, fmt)\
+  do {\
+      printf("[ ");\
+      for (size_t i = 0; i < (self)->len; i++) {\
+          printf(fmt " ", (self)->items[i]);\
+      }\
+      printf("]");\
+  } while (0)
+
+#define Vec_clone(self) ({\
+    typeof(*self) to = { .items = NULL, .len = (self)->len, .cap = (self)->len };\
+    to.items = malloc(sizeof((self)->items[0])*to.cap);\
+    memcpy(to.items, (self)->items, sizeof((self)->items[0])*to.cap);\
+    to;\
+})
+
+#define Vec_split(self, at, left, right) do {\
+    (left)->items = (self)->items;\
+    (left)->len = (at);\
+    (left)->cap = (at);\
+    (right)->items = (self)->items + (at);\
+    (right)->len = (self)->len - (at);\
+    (right)->cap = (self)->len - (at);\
+} while(0);
 
 // STACK
 
 #define typedef_Stack(T, name) typedef_Vec(T, name)
 
 #define Stack_push(self, x) Vec_append(self, x)
-#define Stack_pop(self, x) (self)->items[--(self)->len]
+#define Stack_pop(self, x) ((self)->items[--(self)->len])
 
 // STRING
 
 typedef_Vec(char, String);
+
+#define S(str) ({\
+    String string = {0};\
+    size_t len = strlen(str) + 1;\
+    for (int i = 0; i < len; i++) {\
+        Vec_append(&string, (str[i]));\
+    }\
+    string;\
+})
 
 // LIST
 
@@ -121,17 +161,14 @@ typedef struct CONCAT(_nonptr_, name)* name;
     }\
 })
 
-#define List_match(lst, nil_case, h, t, cons_case)\
-    do {\
-        if ((lst) == NULL) {\
-            nil_case\
-        } else {\
-            typeof(lst) t = (lst)->tail;\
-            typeof((lst)->head) h = (lst)->head;\
-            cons_case\
-        }\
-    } while (0)
-
+#define List_match(lst, nil_case, h, t, cons_case) \
+if ((lst) == NULL) {\
+    nil_case\
+} else {\
+    typeof(lst) t = (lst)->tail;\
+    typeof((lst)->head) h = (lst)->head;\
+    cons_case\
+}
 
 // QUEUE
 
@@ -187,5 +224,7 @@ typedef struct CONCAT(_nonptr_, name)* name;
     }\
     x;\
 })
+
+// HASHMAP
 
 #endif // _NOTSTD_H_INCLUDED
